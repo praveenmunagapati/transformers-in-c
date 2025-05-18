@@ -17,13 +17,11 @@ This is a production-ready implementation of the Transformer model in C, followi
 - Model checkpointing
 - Comprehensive logging
 - Memory-efficient implementation
-- OpenMP parallelization
 
 ## Requirements
 
 - C compiler (GCC 7.0 or later recommended)
 - Make
-- OpenMP support
 - 64-bit system (for large model support)
 
 ## Building
@@ -111,7 +109,6 @@ transformer-c/
 - Adam optimizer with learning rate scheduling
 - Gradient clipping
 - Batch processing
-- OpenMP parallelization for matrix operations
 - Memory-efficient implementation
 
 ### Training
@@ -126,7 +123,6 @@ transformer-c/
 
 The implementation is optimized for performance:
 
-- OpenMP parallelization for matrix operations
 - Memory-efficient implementation
 - Optimized attention mechanism
 - Efficient batch processing

@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 void print_usage(const char* program_name) {
     printf("Usage: %s [options]\n", program_name);
@@ -111,12 +112,7 @@ int main(int argc, char** argv) {
     }
 
     // Create optimizer
-    AdamOptimizer* optimizer = adam_optimizer_create(
-        learning_rate,  // learning_rate
-        0.9f,          // beta1
-        0.999f,        // beta2
-        1e-8f          // epsilon
-    );
+    AdamOptimizer* optimizer = adam_create(model);
 
     if (!optimizer) {
         logger_error(logger, "Failed to create optimizer");
@@ -133,44 +129,45 @@ int main(int argc, char** argv) {
     for (int epoch = 0; epoch < num_epochs; epoch++) {
         logger_info(logger, "Epoch %d/%d", epoch + 1, num_epochs);
         
+        // Create batches for training
+        int num_train_batches = (train_data->size + batch_size - 1) / batch_size;
+        Batch** train_batches = (Batch**)malloc(num_train_batches * sizeof(Batch*));
+        for (int i = 0; i < num_train_batches; i++) {
+            train_batches[i] = batch_create(batch_size, max_len, max_len);
+            generate_batch(train_batches[i], train_data, i * batch_size);
+        }
+        
         // Train for one epoch
-        float train_loss = train_epoch(
-            model,
-            train_data,
-            optimizer,
-            batch_size,
-            max_len
-        );
+        TrainingStats* stats = training_stats_create(num_train_batches);
+        train_epoch(model, optimizer, train_batches, num_train_batches, stats);
+        float train_loss = stats->losses[stats->current_step - 1];
+        training_stats_free(stats);
+        
+        // Free training batches
+        for (int i = 0; i < num_train_batches; i++) {
+            batch_free(train_batches[i]);
+        }
+        free(train_batches);
 
         // Validate
-        float val_loss = validate_epoch(
-            model,
-            val_data,
-            batch_size,
-            max_len
-        );
-
-        logger_info(logger, "Train loss: %.4f, Val loss: %.4f", 
-                   train_loss, val_loss);
+        float val_loss = validate_epoch(model, val_data, batch_size, max_len);
+        logger_info(logger, "Train loss: %.4f, Val loss: %.4f", train_loss, val_loss);
 
         // Save checkpoint
         if (model_file) {
             char checkpoint[256];
-            snprintf(checkpoint, sizeof(checkpoint), 
-                    "%s.epoch%d", model_file, epoch + 1);
-            if (save_checkpoint(model, optimizer, checkpoint) != 0) {
-                logger_error(logger, "Failed to save checkpoint");
-            }
+            snprintf(checkpoint, sizeof(checkpoint), "%s.epoch%d", model_file, epoch + 1);
+            save_checkpoint(model, checkpoint);
         }
     }
 
     // Save final model
-    if (model_file && save_checkpoint(model, optimizer, model_file) != 0) {
-        logger_error(logger, "Failed to save final model");
+    if (model_file) {
+        save_checkpoint(model, model_file);
     }
 
     // Cleanup
-    adam_optimizer_free(optimizer);
+    adam_free(optimizer);
     transformer_free(model);
     dataset_free(train_data);
     dataset_free(val_data);

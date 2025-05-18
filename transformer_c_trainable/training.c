@@ -274,4 +274,44 @@ Transformer* load_checkpoint(const char* path) {
     
     fclose(file);
     return model;
+}
+
+float validate_epoch(Transformer* model, Dataset* dataset,
+                   int batch_size, int max_len) {
+    int num_batches = (dataset->size + batch_size - 1) / batch_size;
+    float total_loss = 0.0f;
+    int total_samples = 0;
+    
+    // Create a single batch for validation
+    Batch* batch = batch_create(batch_size, max_len, max_len);
+    if (!batch) return 0.0f;
+    
+    // Create output matrix
+    Matrix* output = matrix_create(batch_size, max_len);
+    if (!output) {
+        batch_free(batch);
+        return 0.0f;
+    }
+    
+    // Process each batch
+    for (int i = 0; i < num_batches; i++) {
+        generate_batch(batch, dataset, i * batch_size);
+        
+        // Forward pass
+        transformer_forward(model, batch->src_ids, batch->src_len,
+                          batch->tgt_ids, batch->tgt_len, output);
+        
+        // Compute loss
+        float batch_loss = cross_entropy_loss(output, batch->tgt_ids,
+                                            batch->batch_size, batch->tgt_len);
+        
+        total_loss += batch_loss * batch->batch_size;
+        total_samples += batch->batch_size;
+    }
+    
+    // Cleanup
+    batch_free(batch);
+    matrix_free(output);
+    
+    return total_samples > 0 ? total_loss / total_samples : 0.0f;
 } 

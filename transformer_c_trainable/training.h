@@ -4,6 +4,7 @@
 #include "transformer_model.h"
 #include "matrix_ops.h"
 #include "config.h"
+#include "utils.h"
 
 // Loss functions
 float cross_entropy_loss(const Matrix* predictions, const int* targets, int batch_size, int seq_len);
@@ -27,15 +28,6 @@ void adam_free(AdamOptimizer* optimizer);
 void adam_step(AdamOptimizer* optimizer, Transformer* model);
 
 // Training utilities
-typedef struct {
-    int* src_ids;
-    int* tgt_ids;
-    int src_len;
-    int tgt_len;
-} Batch;
-
-Batch* batch_create(int batch_size, int max_src_len, int max_tgt_len);
-void batch_free(Batch* batch);
 void create_padding_mask(Matrix* mask, const int* lengths, int batch_size, int max_len);
 void create_causal_mask(Matrix* mask, int seq_len);
 
@@ -53,6 +45,9 @@ void training_stats_update(TrainingStats* stats, float loss);
 void train_epoch(Transformer* model, AdamOptimizer* optimizer,
                 Batch** batches, int num_batches,
                 TrainingStats* stats);
+
+float validate_epoch(Transformer* model, Dataset* dataset,
+                   int batch_size, int max_len);
 
 // Learning rate scheduler
 float get_learning_rate(int step, int warmup_steps, float d_model);

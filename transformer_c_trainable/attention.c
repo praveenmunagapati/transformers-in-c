@@ -2,6 +2,7 @@
 #include "my_math.h"
 #include <stdlib.h>
 #include <math.h>
+#include <stdio.h>
 
 // Create a new attention layer
 AttentionLayer* attention_create(int d_model, int num_heads) {
@@ -69,10 +70,13 @@ void attention_free(AttentionLayer* layer) {
 // Forward pass of the attention mechanism
 void attention_forward(AttentionLayer* layer, const Matrix* input, 
                       const Matrix* mask, Matrix* output) {
-    // Project input to queries, keys, and values
-    matrix_multiply(layer->query_proj, input, layer->query_weights);
-    matrix_multiply(layer->key_proj, input, layer->key_weights);
-    matrix_multiply(layer->value_proj, input, layer->value_weights);
+    // Project input to query, key, and value
+    matrix_multiply(layer->query_proj->data, input->data, layer->query_weights->data,
+                   input->rows, input->cols, layer->query_weights->cols);
+    matrix_multiply(layer->key_proj->data, input->data, layer->key_weights->data,
+                   input->rows, input->cols, layer->key_weights->cols);
+    matrix_multiply(layer->value_proj->data, input->data, layer->value_weights->data,
+                   input->rows, input->cols, layer->value_weights->cols);
     
     // Compute attention scores
     matrix_attention_scores(layer->attention_scores, 
@@ -91,21 +95,26 @@ void attention_forward(AttentionLayer* layer, const Matrix* input,
     matrix_attention_output(layer->attention_output, 
                           layer->attention_weights, layer->value_proj);
     
-    // Project to output
-    matrix_multiply(output, layer->attention_output, layer->output_weights);
+    // Project attention output
+    matrix_multiply(output->data, layer->attention_output->data, layer->output_weights->data,
+                   layer->attention_output->rows, layer->attention_output->cols,
+                   layer->output_weights->cols);
 }
 
 // Backward pass of the attention mechanism
 void attention_backward(AttentionLayer* layer, const Matrix* grad_output,
                        const Matrix* input, Matrix* grad_input) {
-    // Gradient of output projection
-    matrix_gradient_multiply(layer->grad_output_weights, layer->grad_attention_output,
-                           grad_output, layer->attention_output, layer->output_weights);
-    
-    // Gradient of attention output
+    // Compute gradients for output projection
+    matrix_multiply(layer->grad_output_weights->data, layer->attention_output->data,
+                   grad_output->data, layer->attention_output->rows,
+                   layer->attention_output->cols, grad_output->cols);
+
+    // Compute gradients for attention output
     Matrix* grad_attention_output = matrix_create(layer->attention_output->rows,
                                                 layer->attention_output->cols);
-    matrix_multiply(grad_attention_output, grad_output, layer->output_weights);
+    matrix_multiply(grad_attention_output->data, grad_output->data,
+                   layer->output_weights->data, grad_output->rows,
+                   grad_output->cols, layer->output_weights->cols);
     
     // Gradient of attention weights and values
     Matrix* grad_weights = matrix_create(layer->attention_weights->rows,
@@ -147,10 +156,11 @@ void attention_backward(AttentionLayer* layer, const Matrix* grad_output,
     matrix_gradient_multiply(layer->grad_value_weights, NULL,
                            grad_values, layer->value_proj, NULL);
     
-    // Gradient of input
-    matrix_multiply(grad_input, grad_attention_output, layer->output_weights);
-    
-    // Clean up temporary matrices
+    // Compute gradients for input
+    matrix_multiply(grad_input->data, grad_attention_output->data,
+                   layer->output_weights->data, grad_attention_output->rows,
+                   grad_attention_output->cols, layer->output_weights->cols);
+
     matrix_free(grad_attention_output);
     matrix_free(grad_weights);
     matrix_free(grad_values);
@@ -191,13 +201,13 @@ void attention_update_weights(AttentionLayer* layer, float learning_rate) {
 // Print layer statistics
 void attention_print_stats(const AttentionLayer* layer) {
     printf("Attention Layer Statistics:\n");
-    printf("Query weights norm: %.4f\n", matrix_norm(layer->query_weights->data, 
-                                                   layer->query_weights->rows * layer->query_weights->cols));
-    printf("Key weights norm: %.4f\n", matrix_norm(layer->key_weights->data,
-                                                 layer->key_weights->rows * layer->key_weights->cols));
-    printf("Value weights norm: %.4f\n", matrix_norm(layer->value_weights->data,
-                                                   layer->value_weights->rows * layer->value_weights->cols));
-    printf("Output weights norm: %.4f\n", matrix_norm(layer->output_weights->data,
-                                                    layer->output_weights->rows * layer->output_weights->cols));
+    printf("Query weights norm: %.4f\n", vector_norm(layer->query_weights->data,
+                                                    layer->query_weights->rows * layer->query_weights->cols));
+    printf("Key weights norm: %.4f\n", vector_norm(layer->key_weights->data,
+                                                  layer->key_weights->rows * layer->key_weights->cols));
+    printf("Value weights norm: %.4f\n", vector_norm(layer->value_weights->data,
+                                                    layer->value_weights->rows * layer->value_weights->cols));
+    printf("Output weights norm: %.4f\n", vector_norm(layer->output_weights->data,
+                                                     layer->output_weights->rows * layer->output_weights->cols));
     printf("\n");
 } 

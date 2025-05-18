@@ -1,6 +1,6 @@
 CC = gcc
-CFLAGS = -Wall -Wextra -O3 -march=native -fopenmp
-LDFLAGS = -lm -fopenmp
+CFLAGS = -Wall -Wextra -O3 -march=native
+LDFLAGS = -lm
 
 SRC_DIR = .
 OBJ_DIR = obj

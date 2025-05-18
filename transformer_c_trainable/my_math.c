@@ -152,11 +152,6 @@ void layer_norm(float* result, const float* input, const float* gamma,
     }
 }
 
-// Random number generation
-float random_uniform(float min, float max) {
-    return min + (float)rand() / RAND_MAX * (max - min);
-}
-
 void initialize_weights(float* weights, int size, float scale) {
     for (int i = 0; i < size; i++) {
         weights[i] = random_uniform(-scale, scale);

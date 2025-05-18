@@ -441,4 +441,33 @@ void str_free_array(char** array, int count) {
         free(array[i]);
     }
     free(array);
+}
+
+void generate_batch(Batch* batch, Dataset* dataset, int start_idx) {
+    int end_idx = start_idx + batch->batch_size;
+    if (end_idx > dataset->size) {
+        end_idx = dataset->size;
+    }
+    
+    int actual_batch_size = end_idx - start_idx;
+    batch->batch_size = actual_batch_size;
+    
+    // Copy source and target sequences
+    for (int i = 0; i < actual_batch_size; i++) {
+        int data_idx = start_idx + i;
+        if (data_idx < dataset->size) {
+            // Copy source sequence
+            memcpy(batch->src_ids + i * batch->src_len,
+                   dataset->data + data_idx * dataset->max_len,
+                   batch->src_len * sizeof(int));
+            
+            // Copy target sequence (shifted by 1 for teacher forcing)
+            memcpy(batch->tgt_ids + i * batch->tgt_len,
+                   dataset->data + data_idx * dataset->max_len + 1,
+                   (batch->tgt_len - 1) * sizeof(int));
+            
+            // Add end-of-sequence token
+            batch->tgt_ids[i * batch->tgt_len + batch->tgt_len - 1] = 0;
+        }
+    }
 } 

@@ -3,6 +3,7 @@
 
 #include <math.h>
 #include "config.h"
+#include "utils.h"  // Include utils.h for random_uniform
 
 // Basic math operations
 float sigmoid(float x);
@@ -34,7 +35,6 @@ void layer_norm(float* result, const float* input, const float* gamma,
                 const float* beta, int size);
 
 // Random number generation
-float random_uniform(float min, float max);
 void initialize_weights(float* weights, int size, float scale);
 
 #endif // TRANSFORMER_MATH_H 
